@@ -1,3 +1,5 @@
+;; Jackpot.ton
+
 #include "imports/stdlib.fc";
 
 (int, int, slice, slice, int) load_data() {
