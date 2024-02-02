@@ -3,7 +3,7 @@
 #include "imports/stdlib.fc";
 
 const MIN_CONTRACT_BALANCE = 1000000000; ;; 1 TON
-const DEAD_CONTRACT_BALANCE = 100000000; ;; 0.1 TON. Just in case.
+const DEAD_CONTRACT_BALANCE = 100000000; ;; 0.1 TON
 
 (slice, cell, int, int, int) load_data() inline {
     var ds = get_data().begin_parse();
@@ -78,14 +78,12 @@ slice calculate_battle_address(int wc, cell state_init) {
     (slice owner_address, cell battle_code, int min_battle_value, int fee_percent, int battle_index) = load_data();
 
     if(op == 1) { ;; Create Battle
-
         throw_unless(87, (my_balance - msg_value) >= DEAD_CONTRACT_BALANCE); ;; Avoid contract death
         throw_unless(88, msg_value >= min_battle_value);
 
         deploy_battle(battle_index, battle_code, msg_value, sender_address, fee_percent);
         battle_index += 1;
         save_data(owner_address, battle_code, min_battle_value, fee_percent, battle_index);
-
         return();
     }
 
@@ -103,7 +101,6 @@ slice calculate_battle_address(int wc, cell state_init) {
         .end_cell();
 
         send_raw_message(msg, 0);
-
         return();
     }
 
@@ -126,7 +123,6 @@ slice calculate_battle_address(int wc, cell state_init) {
 
     if(op == 5) { ;; Change owner_address
         slice new_owner_address = in_msg_body~load_msg_addr();
-        
         save_data(new_owner_address, battle_code, min_battle_value, fee_percent, battle_index);
         return();
     }
