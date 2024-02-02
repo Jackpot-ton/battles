@@ -1,0 +1,140 @@
+;; Jackpot.ton
+
+#include "imports/stdlib.fc";
+
+(int, int, slice, slice, int) load_data() {
+  slice ds = get_data().begin_parse();
+  var(index, operator_address) = (ds~load_uint(64), ds~load_msg_addr());
+  if(ds.slice_bits() > 0) {
+    return(-1, index, operator_address, ds~load_msg_addr(), ds~load_uint(8));
+  } else {
+    return (0, index, operator_address, null(), null());
+  }
+}
+
+() save_data(int battle_index, slice operator_address, slice creator_address, int fee_percent) impure {
+  set_data(
+    begin_cell()
+      .store_uint(battle_index, 64)
+      .store_slice(operator_address)
+      .store_slice(creator_address)
+      .store_uint(fee_percent, 8)
+    .end_cell()
+  );
+}
+
+() send_transaction(slice address, int value) impure inline {
+  var msg = begin_cell()
+    .store_uint(0x10, 6)
+    .store_slice(address)
+    .store_coins(value)
+    .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+    .store_uint(0, 32)
+    .store_slice("Transfer from Jackpot.ton Battles!")
+    .end_cell();
+
+  send_raw_message(msg, 0);
+}
+
+() disable_contract(int battle_index, slice operator_address, slice creator_address) impure inline {
+  var msg_last = begin_cell()
+    .store_uint(0x10, 6)
+    .store_slice(operator_address)
+    .store_coins(0)
+    .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+  .end_cell();
+
+  send_raw_message(msg_last, 128);
+
+  save_data(battle_index, operator_address, creator_address, 100); ;; fee_percent : 100 = contract disabled.
+}
+
+() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
+  if(in_msg_body.slice_empty?()) {
+    throw(999);
+    return();
+  }
+
+  slice cs = in_msg_full.begin_parse();
+  int flags = cs~load_uint(4);
+
+  if(flags & 1) {
+    return();
+  }
+
+  slice sender_address = cs~load_msg_addr();
+  (int init?, int battle_index, slice operator_address, slice creator_address, int fee_percent) = load_data();
+
+  if(~ init?) {
+    throw_unless(405, equal_slices(operator_address, sender_address));
+    save_data(battle_index, operator_address, in_msg_body~load_msg_addr(), in_msg_body~load_uint(8));
+    return();
+  }
+
+  if(fee_percent == 100) { throw(1000); } ;; contract disabled.
+
+  int op = in_msg_body~load_uint(32);
+
+  cs~load_msg_addr(); ;; skip dst
+  cs~load_coins(); ;; skip value
+  cs~skip_bits(1); ;; skip extracurrency collection
+  cs~load_coins(); ;; skip ihr_fee
+  int fwd_fee = muldiv(cs~load_coins(), 3, 2);
+
+  int to_send_percent = (my_balance - msg_value) / 100;
+  
+  if(op == 777) { ;; Battle!
+    throw_unless(404, msg_value > (my_balance - msg_value));
+
+    randomize_lt();
+    int winner = rand(100); ;; 0 - 99
+    int bet = (msg_value - fwd_fee);
+
+    if(winner > 49) { ;; Creator lost.
+      send_transaction(sender_address, (to_send_percent * (100 - (fee_percent * 2))) + bet); ;; x2 fee
+    }
+    else {
+      send_transaction(creator_address, (to_send_percent * (100 - fee_percent)) + bet); ;; standart fee for battle creator
+    }
+
+    disable_contract(battle_index, operator_address, creator_address);
+
+    return();
+  }
+
+  throw_unless(406, equal_slices(creator_address, sender_address)); ;; Creator only
+
+  if(op == 888) { ;; Exit battle
+
+    send_transaction(creator_address, to_send_percent * (100 - fee_percent));
+    disable_contract(battle_index, operator_address, creator_address);
+
+    return();
+  }
+
+  throw(0xffff);
+}
+
+;;
+;; Get methods
+;;
+
+(int, int, slice, slice, int) get_battle_data() method_id {
+  (int init?, int battle_index, slice operator_address, slice creator_address, int fee_percent) = load_data();
+  return (init?, battle_index, operator_address, creator_address, fee_percent);
+}
+
+int get_battle_index() method_id {
+  (_, int battle_index, _, _, _) = load_data();
+  return battle_index;
+}
+
+int get_fee_percent() method_id {
+  (_, _, _, _, int fee_percent) = load_data();
+  return fee_percent;
+}
+
+slice get_creator_address() method_id {
+  (_, _, _, slice creator_address, _) = load_data();
+  return creator_address;
+}
