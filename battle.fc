@@ -1,5 +1,3 @@
-;; Jackpot.ton
-
 #include "imports/stdlib.fc";
 
 (int, int, slice, slice, int) load_data() {
@@ -45,7 +43,6 @@
   .end_cell();
 
   send_raw_message(msg_last, 128);
-
   save_data(battle_index, operator_address, creator_address, 100); ;; fee_percent : 100 = contract disabled.
 }
 
@@ -98,17 +95,14 @@
     }
 
     disable_contract(battle_index, operator_address, creator_address);
-
     return();
   }
 
   throw_unless(406, equal_slices(creator_address, sender_address)); ;; Creator only
 
   if(op == 888) { ;; Exit battle
-
     send_transaction(creator_address, to_send_percent * (100 - fee_percent));
     disable_contract(battle_index, operator_address, creator_address);
-
     return();
   }
 
