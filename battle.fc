@@ -23,14 +23,14 @@
   );
 }
 
-() send_transaction(slice address, int value) impure inline {
+() send_transaction(slice address, int value, slice message) impure inline {
   var msg = begin_cell()
     .store_uint(0x10, 6)
     .store_slice(address)
     .store_coins(value)
     .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
     .store_uint(0, 32)
-    .store_slice("Transfer from Jackpot.ton Battles!")
+    .store_slice(message)
     .end_cell();
 
   send_raw_message(msg, 0);
@@ -44,8 +44,8 @@
     .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
   .end_cell();
 
-  send_raw_message(msg_last, 128);
   save_data(battle_index, operator_address, creator_address, 100); ;; fee_percent : 100 = contract disabled.
+  send_raw_message(msg_last, 128);
 }
 
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
@@ -90,10 +90,14 @@
     int bet = (msg_value - fwd_fee);
 
     if(winner > 49) { ;; Creator lost.
-      send_transaction(sender_address, (to_send_percent * (100 - (fee_percent * 2))) + bet); ;; x2 fee
+      send_transaction(sender_address, (to_send_percent * (100 - (fee_percent * 2))) + bet, "Jackpot.ton Battles - You win!"); ;; x2 fee
+
+      send_transaction(creator_address, 11000000, "Battle defeat notification."); ;; loose notification
     }
     else {
-      send_transaction(creator_address, (to_send_percent * (100 - fee_percent)) + bet); ;; standart fee for battle creator
+      send_transaction(creator_address, (to_send_percent * (100 - fee_percent)) + bet, "Jackpot.ton Battles - You win!"); ;; standart fee for battle creator
+
+      send_transaction(sender_address, 11000000, "Battle defeat notification.");
     }
 
     disable_contract(battle_index, operator_address, creator_address);
@@ -103,7 +107,7 @@
   throw_unless(406, equal_slices(creator_address, sender_address)); ;; Creator only
 
   if(op == 888) { ;; Exit battle
-    send_transaction(creator_address, to_send_percent * (100 - fee_percent));
+    send_transaction(creator_address, to_send_percent * (100 - fee_percent), "Jackpot.ton Battles - Battle cancelled.");
     disable_contract(battle_index, operator_address, creator_address);
     return();
   }
