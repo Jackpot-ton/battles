@@ -2,7 +2,7 @@
 
 ## Battles
 
-Contract address: `EQDUNg1MtGkY3c1bmQJsxvwuzLZ4RCYyimIoSy8NQdqqlE6V`<br>
+Contract address: `EQAIiXf9qEzipLci0MaR_a_7C5S8mb8cy2kU9cGGQId4qwZg`<br>
 
 [Website](https://jackpot-ton.com) <br>
 [Telegram mini app](https://t.me/jackpot_ton_bot/Jackpot_ton)
